@@ -1,0 +1,1937 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>다이어트 RPG</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<!-- ✅ PWA 필수(추가) -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#00ff99">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+
+<style>
+:root{
+  --bg:#0e0e0e; --card:#1c1c1c; --card2:#171717; --text:#fff; --muted:#bbb;
+  --green:#4caf50; --gray:#777; --red:#c62828; --blue:#2d9cdb; --amber:#ff9800;
+
+  --radius: 14px;
+  --shadow: 0 8px 22px rgba(0,0,0,.35);
+  --font: Arial, sans-serif;
+}
+html,body{background:var(--bg);color:var(--text);font-family:var(--font);margin:0}
+body{padding:72px 12px 12px}
+h1,h2{margin:10px 0;text-align:center}
+a{color:inherit;text-decoration:none}
+.card{background:var(--card);border-radius:var(--radius);padding:14px;margin-bottom:12px;position:relative;box-shadow:var(--shadow)}
+button,input,textarea,select{width:100%;padding:12px;margin-top:6px;border:none;border-radius:calc(var(--radius) - 4px);font-size:15px;box-sizing:border-box}
+button{background:var(--green);color:#fff;font-weight:bold;transition:transform .08s ease, filter .08s ease}
+button:active{transform:scale(.96);filter:brightness(1.1)}
+button:disabled{opacity:.45;filter:grayscale(.2);transform:none;cursor:not-allowed}
+.gray{background:var(--gray)}
+.red{background:var(--red)}
+.blue{background:var(--blue)}
+.amber{background:var(--amber)}
+.lock{opacity:.4}
+.bar-bg{background:#333;height:18px;border-radius:10px;overflow:hidden}
+.bar{height:100%;transition:width .35s ease}
+.xp{background:linear-gradient(90deg,#00ff99,#00ccff)}
+.hp{background:#ff5555}
+.boss{background:#ff9800}
+.row{display:flex;justify-content:space-between;font-size:14px;margin-bottom:4px;gap:10px;align-items:center}
+.row .muted{color:var(--muted)}
+#msg{text-align:center;font-weight:bold;margin-top:6px;min-height:20px}
+.canvas-wrap{background:var(--card2);border-radius:12px;padding:10px;margin-top:8px}
+canvas{width:100%;height:220px}
+
+.gear-item{padding:10px;border-radius:12px;background:var(--card2);margin-top:8px}
+.gear-sub{font-size:12px;color:#ccc;margin-top:4px}
+
+.pills{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.pill{padding:6px 10px;border-radius:999px;background:#2a2a2a;font-size:13px}
+.pill.ok{background:rgba(76,175,80,.25);border:1px solid rgba(76,175,80,.55)}
+.pill.no{background:rgba(255,85,85,.18);border:1px solid rgba(255,85,85,.45)}
+.pill.warn{background:rgba(255,152,0,.15);border:1px solid rgba(255,152,0,.45)}
+.pill.info{background:rgba(45,156,219,.15);border:1px solid rgba(45,156,219,.45)}
+
+hr{border:none;border-top:1px solid #2b2b2b;margin:10px 0}
+
+/* UI 애니메이션 */
+@keyframes shake{0%{transform:translateX(0)}25%{transform:translateX(-5px)}50%{transform:translateX(5px)}75%{transform:translateX(-5px)}100%{transform:translateX(0)}}
+.shake{animation:shake .18s}
+@keyframes glow{0%{box-shadow:0 0 0 rgba(0,255,153,0)}50%{box-shadow:0 0 22px rgba(0,255,153,.55)}100%{box-shadow:0 0 0 rgba(0,255,153,0)}}
+.levelup{animation:glow .6s}
+.damage{
+ position:absolute;left:50%;top:48%;transform:translateX(-50%);
+ font-weight:900;text-shadow:0 2px 10px rgba(0,0,0,.7);
+ pointer-events:none;animation:floatUp .55s ease forwards;
+}
+@keyframes floatUp{from{opacity:1;transform:translate(-50%,0) scale(1)}to{opacity:0;transform:translate(-50%,-42px) scale(1.05)}}
+.overlay{
+ position:fixed;inset:0;background:rgba(0,0,0,.85);
+ display:none;align-items:center;justify-content:center;
+ font-size:30px;font-weight:900;z-index:9999;
+}
+.overlay.show{display:flex;animation:pop .22s ease}
+@keyframes pop{from{transform:scale(.96);opacity:.7}to{transform:scale(1);opacity:1}}
+
+/* 상단 고정 퀵네비 */
+.nav{
+ position:fixed;left:0;right:0;top:0;z-index:999;
+ background:rgba(14,14,14,.92);
+ border-bottom:1px solid #222;
+ backdrop-filter: blur(6px);
+ padding:10px 10px;
+ display:flex;align-items:center;gap:8px;overflow:auto;
+}
+.nav .brand{font-weight:900;white-space:nowrap;margin-right:4px}
+.nav a{
+ white-space:nowrap;
+ padding:8px 10px;border-radius:999px;background:#1f1f1f;
+ font-size:13px;opacity:.95
+}
+.nav a:active{transform:scale(.98)}
+.nav .spacer{flex:1}
+.nav .mini{
+ padding:8px 10px;border-radius:999px;background:#1f1f1f;font-size:13px;
+ width:auto !important; margin-top:0 !important; color:var(--text);
+}
+.nav .mini.gray{background:#1f1f1f}
+.nav select.mini{outline:none}
+
+/* 아코디언 */
+details{background:transparent}
+summary{cursor:pointer;list-style:none}
+summary::-webkit-details-marker{display:none}
+.summaryRow{display:flex;justify-content:space-between;align-items:center}
+.chev{opacity:.6}
+details[open] .chev{transform:rotate(180deg)}
+
+/* 모달 */
+.modalBack{
+ position:fixed;inset:0;background:rgba(0,0,0,.6);
+ display:none;align-items:center;justify-content:center;z-index:9998;padding:14px;
+}
+.modalBack.show{display:flex}
+.modal{
+ width:min(560px, 100%);
+ background:#121212;border:1px solid #2a2a2a;border-radius:16px;
+ padding:14px;
+}
+.modal h3{margin:0 0 8px 0}
+.modal .actions{display:flex;gap:8px;margin-top:10px}
+.modal .actions button{width:50%}
+.small{font-size:12px;color:var(--muted);line-height:1.55}
+.clickable{cursor:pointer}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+
+/* 도움말 버튼 */
+.helpBtn{
+  width:auto !important;
+  padding:8px 10px !important;
+  border-radius:999px !important;
+  background:#1f1f1f !important;
+  font-size:13px !important;
+  margin-top:0 !important;
+  color:var(--text) !important;
+}
+.helpBtn:active{transform:scale(.98)}
+.helpTitle{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;background:#232323;font-size:12px;color:#ddd}
+.ul{margin:8px 0 0 0;padding-left:18px}
+.ul li{margin:6px 0}
+.kv{display:grid;grid-template-columns:140px 1fr;gap:6px;margin-top:10px}
+.kv div{padding:6px 8px;border-radius:10px;background:#171717}
+.kv .k{color:#ddd}
+.kv .v{color:#bbb}
+
+/* 퀘스트 */
+.qItem{background:var(--card2);border-radius:12px;padding:10px;margin-top:8px}
+.qTop{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.qTitle{font-weight:800}
+.qDesc{font-size:12px;color:#cfcfcf;margin-top:4px;line-height:1.45}
+.qMeta{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.tag{font-size:12px;padding:4px 8px;border-radius:999px;background:#232323;color:#ddd}
+.tag.ok{background:rgba(76,175,80,.18);border:1px solid rgba(76,175,80,.45)}
+.tag.no{background:rgba(255,85,85,.14);border:1px solid rgba(255,85,85,.35)}
+.tag.info{background:rgba(45,156,219,.14);border:1px solid rgba(45,156,219,.35)}
+.smallBtn{width:auto !important;padding:8px 10px !important;border-radius:10px !important;font-size:13px !important;margin-top:0 !important}
+
+/* 스킨 잠김 표시 */
+.lockOpt{opacity:.55}
+
+/* ===== 스킨 3종 ===== */
+/* 메이플풍 */
+body.skin-maple{
+  --bg:#0f1021;
+  --card:#1a1740;
+  --card2:#151233;
+  --text:#ffffff;
+  --muted:#d5d6ff;
+
+  --green:#ff8ccf;
+  --blue:#6fb7ff;
+  --red:#ff5b7e;
+  --amber:#ffd25e;
+  --gray:#6f74a6;
+
+  --radius:18px;
+  --shadow: 0 10px 26px rgba(0,0,0,.45);
+  --font: "Trebuchet MS", Arial, sans-serif;
+}
+body.skin-maple .xp{background:linear-gradient(90deg,#ffd25e,#ff8ccf)}
+body.skin-maple .boss{background:linear-gradient(90deg,#ff9f43,#ff5b7e)}
+body.skin-maple .nav{background:rgba(15,16,33,.92);border-bottom:1px solid rgba(255,255,255,.08)}
+body.skin-maple .nav a, body.skin-maple .nav .mini, body.skin-maple .helpBtn{
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.10);
+}
+
+/* 네온 */
+body.skin-neon{
+  --bg:#05070a;
+  --card:#0b121a;
+  --card2:#071019;
+  --text:#eaffff;
+  --muted:#a2c7d1;
+
+  --green:#00ff99;
+  --blue:#00ccff;
+  --red:#ff2a6d;
+  --amber:#ffb000;
+  --gray:#5b7a86;
+
+  --radius:14px;
+  --shadow: 0 0 0 rgba(0,0,0,0);
+  --font: Arial, sans-serif;
+}
+body.skin-neon .card{
+  box-shadow:
+    0 0 0 1px rgba(0,255,153,.12),
+    0 10px 24px rgba(0,0,0,.55);
+}
+body.skin-neon .xp{background:linear-gradient(90deg,#00ff99,#00ccff)}
+body.skin-neon .hp{background:linear-gradient(90deg,#ff2a6d,#ff5b7e)}
+body.skin-neon .boss{background:linear-gradient(90deg,#ffb000,#ff2a6d)}
+body.skin-neon .nav{background:rgba(5,7,10,.92);border-bottom:1px solid rgba(0,255,153,.18)}
+body.skin-neon .nav a, body.skin-neon .nav .mini, body.skin-neon .helpBtn{
+  background:rgba(0,255,153,.08);
+  border:1px solid rgba(0,255,153,.18);
+}
+
+/* 레트로 게임보이 */
+body.skin-retro{
+  --bg:#c6d8a8;
+  --card:#dfe8c8;
+  --card2:#cdddb2;
+  --text:#1f2d16;
+  --muted:#4a5a3a;
+
+  --green:#4b6f44;
+  --blue:#3f5f8a;
+  --red:#7a3e3e;
+  --amber:#8a7a2f;
+  --gray:#5a6b50;
+
+  --radius:6px;
+  --shadow:none;
+  --font: "Courier New", monospace;
+}
+body.skin-retro .bar-bg{background:#9fb58a}
+body.skin-retro .xp,
+body.skin-retro .boss{background:#4b6f44}
+body.skin-retro .nav{
+  background:#b8cfa0;
+  border-bottom:2px solid #5a6b50;
+}
+body.skin-retro .nav a,
+body.skin-retro .nav .mini,
+body.skin-retro .helpBtn{
+  background:#dfe8c8;
+  border:2px solid #5a6b50;
+}
+body.skin-retro .card{border:2px solid #5a6b50}
+body.skin-retro .pill,
+body.skin-retro .tag,
+body.skin-retro .badge{
+  background:#cdddb2;
+  border:1px solid #5a6b50;
+  color:var(--text);
+}
+body.skin-retro .kv div{background:#cdddb2}
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <div class="brand">🔥 다이어트RPG</div>
+  <a href="#status">상태</a>
+  <a href="#quest">퀘스트</a>
+  <a href="#work">운동</a>
+  <a href="#meal">식단</a>
+  <a href="#boss">보스</a>
+  <a href="#gearSec">장비</a>
+  <a href="#cal">캘린더</a>
+  <a href="#stats">그래프</a>
+  <div class="spacer"></div>
+
+  <select id="skinSelect" class="mini" onchange="setSkin(this.value)"></select>
+
+  <button class="mini gray" onclick="openBackup()">백업/복원</button>
+  <button class="mini gray" onclick="openHelp('all')">설명</button>
+</div>
+
+<h1>🔥 다이어트 RPG 🔥</h1>
+
+<div class="card" id="status">
+  <div class="helpTitle">
+    <h2 style="margin:0">상태</h2>
+    <button class="helpBtn" onclick="openHelp('status')">설명</button>
+  </div>
+
+  <div class="row">레벨 <span id="lv"></span></div>
+  <div class="row">XP <span id="xpText"></span></div>
+  <div class="bar-bg"><div class="bar xp" id="xpBar"></div></div>
+  <hr>
+  <div class="row">HP <span id="hpText"></span></div>
+  <div class="bar-bg"><div class="bar hp" id="hpBar"></div></div>
+  <div class="row">공격력 <span id="atk"></span></div>
+  <div class="row">치명타 <span id="crit"></span>%</div>
+  <div class="row">스탯 포인트 <span id="sp"></span></div>
+  <div class="row">강화 재료 <span id="mat"></span></div>
+  <div class="row">연속 출석 <span id="streak"></span>일 <span class="muted" id="streakNext"></span></div>
+
+  <div class="pills" id="todayPills"></div>
+  <div class="row"><span class="muted">오늘 올클리어</span><span id="dailyProgress"></span></div>
+
+  <div id="msg"></div>
+</div>
+
+<div class="card" id="quest">
+  <details open>
+    <summary>
+      <div class="summaryRow">
+        <div class="helpTitle" style="width:100%">
+          <h2 style="margin:0">🧾 퀘스트</h2>
+          <button class="helpBtn" onclick="openHelp('quest')">설명</button>
+        </div>
+        <span class="chev">▾</span>
+      </div>
+    </summary>
+
+    <div class="row">
+      <span class="muted">일일</span>
+      <span class="muted" id="dailyQuestKey"></span>
+    </div>
+    <div id="dailyQuests"></div>
+
+    <hr>
+
+    <div class="row">
+      <span class="muted">주간</span>
+      <span class="muted" id="weeklyQuestKey"></span>
+    </div>
+    <div id="weeklyQuests"></div>
+  </details>
+</div>
+
+<div class="card">
+  <details open>
+    <summary>
+      <div class="summaryRow">
+        <div class="helpTitle" style="width:100%">
+          <h2 style="margin:0">📈 스탯 분배</h2>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span class="badge">B안 롤백</span>
+            <button class="helpBtn" onclick="openHelp('stats')">설명</button>
+          </div>
+        </div>
+        <span class="chev">▾</span>
+      </div>
+    </summary>
+    <button onclick="addStat('hp')">HP +10</button>
+    <button onclick="addStat('atk')">공격력 +1</button>
+    <button onclick="addStat('crit')">치명타 +0.5%</button>
+  </details>
+</div>
+
+<div class="card" id="work">
+  <details open>
+    <summary>
+      <div class="summaryRow">
+        <div class="helpTitle" style="width:100%">
+          <h2 style="margin:0">🏃 운동</h2>
+          <button class="helpBtn" onclick="openHelp('work')">설명</button>
+        </div>
+        <span class="chev">▾</span>
+      </div>
+    </summary>
+
+    <input id="kmInput" type="number" step="0.1" placeholder="달리기 km">
+    <button id="runBtn" onclick="addRun()">달리기</button>
+
+    <div class="grid2">
+      <button class="gray" id="editRunBtn" onclick="editTodayRun()">오늘 달리기 수정</button>
+      <button class="gray" id="undoRunBtn" onclick="undoToday('run')">오늘 달리기 취소</button>
+    </div>
+
+    <button id="workoutBtn" onclick="confirmWorkout()">근력운동 (+50 XP)</button>
+
+    <div class="grid2">
+      <button class="gray" id="undoWorkoutBtn" onclick="undoToday('workout')">오늘 근력운동 취소</button>
+      <button class="gray" disabled style="opacity:.2"> </button>
+    </div>
+  </details>
+</div>
+
+<div class="card" id="meal">
+  <details open>
+    <summary>
+      <div class="summaryRow">
+        <div class="helpTitle" style="width:100%">
+          <h2 style="margin:0">🍱 식단</h2>
+          <button class="helpBtn" onclick="openHelp('meal')">설명</button>
+        </div>
+        <span class="chev">▾</span>
+      </div>
+    </summary>
+
+    <div class="grid2">
+      <button id="mealOkBtn" onclick="confirmMeal(true)">식단 성공</button>
+      <button class="gray" id="mealNoBtn" onclick="confirmMeal(false)">식단 실패</button>
+    </div>
+
+    <div class="grid2">
+      <button class="gray" id="editMealBtn" onclick="editTodayMeal()">오늘 식단 수정</button>
+      <button class="gray" id="undoMealBtn" onclick="undoToday('meal')">오늘 식단 취소</button>
+    </div>
+  </details>
+</div>
+
+<div class="card" id="boss">
+  <details open>
+    <summary>
+      <div class="summaryRow">
+        <div class="helpTitle" style="width:100%">
+          <h2 style="margin:0">👹 보스</h2>
+          <button class="helpBtn" onclick="openHelp('boss')">설명</button>
+        </div>
+        <span class="chev">▾</span>
+      </div>
+    </summary>
+
+    <div id="bossCard">
+      <div class="row">보스 Lv <span id="bossLv"></span> <span class="muted">(ATK <span id="bossAtk"></span>)</span></div>
+
+      <div class="row">
+        <span class="muted">패턴</span>
+        <span id="patternText" class="pill info" style="margin:0;padding:4px 10px;display:inline-block;border-radius:999px">-</span>
+      </div>
+
+      <div class="row">보스 HP <span id="bossHpText"></span></div>
+      <div class="bar-bg"><div class="bar boss" id="bossHpBar"></div></div>
+
+      <div class="row">내 HP <span id="battleHpText"></span></div>
+      <div class="bar-bg"><div class="bar hp" id="battleHpBar"></div></div>
+
+      <div class="grid2">
+        <button id="bossBtn" onclick="startBoss()">보스전 시작</button>
+        <button id="dodgeBtn" class="blue" onclick="useDodge()" disabled>회피</button>
+      </div>
+
+      <div id="timer" class="small"></div>
+      <div id="patternHint" class="small"></div>
+    </div>
+  </details>
+</div>
+
+<div class="card" id="gearSec">
+  <details open>
+    <summary>
+      <div class="summaryRow">
+        <div class="helpTitle" style="width:100%">
+          <h2 style="margin:0">🛡️ 장비</h2>
+          <button class="helpBtn" onclick="openHelp('gear')">설명</button>
+        </div>
+        <span class="chev">▾</span>
+      </div>
+    </summary>
+    <div id="gear"></div>
+  </details>
+</div>
+
+<div class="card" id="cal">
+  <details open>
+    <summary>
+      <div class="summaryRow">
+        <div class="helpTitle" style="width:100%">
+          <h2 style="margin:0">📅 캘린더</h2>
+          <button class="helpBtn" onclick="openHelp('calendar')">설명</button>
+        </div>
+        <span class="chev">▾</span>
+      </div>
+    </summary>
+    <div class="small">※ 날짜를 누르면 상세가 뜹니다.</div>
+    <div id="calendar" style="margin-top:8px"></div>
+  </details>
+</div>
+
+<div class="card" id="stats">
+  <details open>
+    <summary>
+      <div class="summaryRow">
+        <div class="helpTitle" style="width:100%">
+          <h2 style="margin:0">📊 그래프</h2>
+          <button class="helpBtn" onclick="openHelp('charts')">설명</button>
+        </div>
+        <span class="chev">▾</span>
+      </div>
+    </summary>
+
+    <div class="row">
+      <span class="muted">기간</span>
+      <span>
+        <button class="gray" style="width:auto;padding:8px 10px" onclick="setChartDays(7)">7일</button>
+        <button class="gray" style="width:auto;padding:8px 10px" onclick="setChartDays(30)">30일</button>
+      </span>
+    </div>
+
+    <div class="canvas-wrap">
+      <div class="row"><span>달리기(km)</span><span class="muted" id="chartRange1"></span></div>
+      <canvas id="runChart"></canvas>
+    </div>
+
+    <div class="canvas-wrap">
+      <div class="row"><span>XP 변화(획득 XP)</span><span class="muted" id="chartRange2"></span></div>
+      <canvas id="xpChart"></canvas>
+    </div>
+  </details>
+</div>
+
+<div class="card">
+  <details>
+    <summary>
+      <div class="summaryRow">
+        <div class="helpTitle" style="width:100%">
+          <h2 style="margin:0">⚠️ 전체 초기화</h2>
+          <button class="helpBtn" onclick="openHelp('reset')">설명</button>
+        </div>
+        <span class="chev">▾</span>
+      </div>
+    </summary>
+    <div class="small">안전장치: “RESET”을 직접 입력해야 초기화됩니다.</div>
+    <button class="red" onclick="resetAll()">모든 데이터 초기화</button>
+  </details>
+</div>
+
+<div class="overlay" id="overlay"></div>
+
+<!-- 날짜 상세 모달 -->
+<div class="modalBack" id="detailModalBack" onclick="closeDetail(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3>📌 날짜 상세</h3>
+    <div id="detailBody" class="small"></div>
+    <div class="actions">
+      <button class="gray" onclick="closeDetail()">닫기</button>
+      <button onclick="jumpToToday()">오늘로</button>
+    </div>
+  </div>
+</div>
+
+<!-- 백업/복원 모달 -->
+<div class="modalBack" id="backupModalBack" onclick="closeBackup(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3>💾 백업 / 복원</h3>
+    <div class="small">아래 텍스트를 복사해 저장하거나, 복원할 텍스트를 붙여넣고 “복원”을 누르세요.</div>
+    <textarea id="backupText" rows="8" placeholder="여기에 백업 텍스트가 표시됩니다."></textarea>
+    <div class="actions">
+      <button class="gray" onclick="copyBackup()">복사</button>
+      <button onclick="restoreBackup()">복원</button>
+    </div>
+    <button class="gray" onclick="closeBackup()" style="margin-top:8px">닫기</button>
+  </div>
+</div>
+
+<!-- 수정 모달 -->
+<div class="modalBack" id="editModalBack" onclick="closeEdit(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3 id="editTitle">✏️ 수정</h3>
+    <div id="editBody" class="small"></div>
+    <div class="actions">
+      <button class="gray" onclick="closeEdit()">취소</button>
+      <button onclick="applyEdit()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 설명(도움말) 모달 -->
+<div class="modalBack" id="helpModalBack" onclick="closeHelp(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3 id="helpTitle">📖 설명</h3>
+    <div id="helpBody" class="small"></div>
+    <div class="actions">
+      <button class="gray" onclick="closeHelp()">닫기</button>
+      <button onclick="openHelp('all')">전체</button>
+    </div>
+  </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<script>
+const $ = id => document.getElementById(id);
+const today = () => new Date().toISOString().slice(0,10);
+
+let msgTimer=null;
+function showMsg(t){
+  $("msg").innerText=t;
+  if(msgTimer) clearTimeout(msgTimer);
+  msgTimer=setTimeout(()=>{$("msg").innerText="";},2200);
+}
+function flashOverlay(text){
+  const o=$("overlay");
+  o.textContent=text;
+  o.classList.add("show");
+  setTimeout(()=>o.classList.remove("show"),900);
+}
+function damagePopup(text,isCrit=false){
+  const d=document.createElement("div");
+  d.className="damage";
+  d.style.color=isCrit ? "#ff4444" : "#ffffff";
+  d.textContent=text;
+  $("bossCard").appendChild(d);
+  setTimeout(()=>d.remove(),600);
+}
+function addDaysISO(iso, days){
+  const dt=new Date(iso+"T00:00:00");
+  dt.setDate(dt.getDate()+days);
+  return dt.toISOString().slice(0,10);
+}
+function fmtMMDD(iso){ return iso.slice(5,7)+"/"+iso.slice(8,10); }
+
+/* =========================
+   보스 스케일
+========================= */
+function bossHpForLevel(lv){ return 1000 + (Math.max(1,lv)-1) * 100; }
+function bossAtkForLevel(lv){ return 2 + (Math.max(1,lv)-1) * 1; }
+
+/* =========================
+   상태 로드/초기값
+========================= */
+let state = JSON.parse(localStorage.getItem("state")) || {
+  lv:1, xp:0, maxXp:100,
+  maxHp:50, hp:50, atk:5, crit:5,
+  mat:0, runSum:0,
+  bossLv:1, bossHp:bossHpForLevel(1), bossAtk:bossAtkForLevel(1),
+  gears:[
+    {name:"운동화",lv:0,req:5},
+    {name:"운동복",lv:0,req:10},
+    {name:"손목밴드",lv:0,req:15},
+    {name:"헤드셋",lv:0,req:20}
+  ],
+  streak:0,
+  lastStreakDate:"",
+  lastStreakRewardDate:"",
+  spentSP:0,
+  statLog:[],
+  quests:{ dailyKey:"", weeklyKey:"", claimed:{} },
+
+  /* ✅ 스킨: 네온 기본 / 메이플풍(레벨10) / 레트로(연속출석15일) */
+  skins: {
+    current: "neon",
+    unlocked: { neon:true, maple:false, retro:false },
+    seenUnlock: { neon:true, maple:false, retro:false }
+  }
+};
+
+let records = JSON.parse(localStorage.getItem("records")) || {};
+let battle=null, bossTimer=null;
+
+/* 누락 보정 */
+state.lv ??= 1;
+state.xp ??= 0;
+state.maxXp ??= (100 + 50*(state.lv-1));
+state.maxHp ??= 50;
+state.hp ??= Math.min(state.hp ?? state.maxHp, state.maxHp);
+state.atk ??= 5;
+state.crit ??= 5;
+state.mat ??= 0;
+state.runSum ??= 0;
+
+state.bossLv ??= 1;
+state.bossHp = bossHpForLevel(state.bossLv);
+state.bossAtk = bossAtkForLevel(state.bossLv);
+
+state.gears ??= [
+  {name:"운동화",lv:0,req:5},
+  {name:"운동복",lv:0,req:10},
+  {name:"손목밴드",lv:0,req:15},
+  {name:"헤드셋",lv:0,req:20}
+];
+state.streak ??= 0;
+state.lastStreakDate ??= "";
+state.lastStreakRewardDate ??= "";
+state.spentSP ??= 0;
+state.statLog ??= [];
+state.quests ??= {dailyKey:"", weeklyKey:"", claimed:{}};
+state.quests.claimed ??= {};
+
+/* ✅ 스킨 기본값 강제 */
+state.skins ??= { current:"neon", unlocked:{neon:true,maple:false,retro:false}, seenUnlock:{neon:true,maple:false,retro:false} };
+state.skins.current ??= "neon";
+state.skins.unlocked ??= {neon:true,maple:false,retro:false};
+state.skins.seenUnlock ??= {neon:true,maple:false,retro:false};
+state.skins.unlocked.neon = true;
+state.skins.seenUnlock.neon = true;
+
+function save(){
+  localStorage.setItem("state", JSON.stringify(state));
+  localStorage.setItem("records", JSON.stringify(records));
+}
+
+/* =========================
+   스킨(테마) 시스템 (표시 순서: 네온 → 메이플풍 → 레트로)
+========================= */
+const SKIN_REQ = {
+  neon:   { label:"네온", reqText:"기본" },
+  maple:  { label:"메이플풍", reqText:"해금: 레벨 10" },
+  retro:  { label:"레트로 게임보이", reqText:"해금: 연속출석 15일" }
+};
+
+function applySkinClass(skin){
+  const b=document.body;
+  b.classList.remove("skin-neon","skin-maple","skin-retro");
+  if(skin==="neon") b.classList.add("skin-neon");
+  else if(skin==="retro") b.classList.add("skin-retro");
+  else b.classList.add("skin-maple");
+}
+
+function setSkin(skin){
+  if(!state.skins.unlocked[skin]){
+    showMsg("🔒 아직 해금되지 않은 스킨입니다");
+    flashOverlay("LOCKED");
+    renderSkinSelect();
+    return;
+  }
+  state.skins.current = skin;
+  applySkinClass(skin);
+  showMsg(`🎨 스킨 변경: ${SKIN_REQ[skin]?.label || skin}`);
+  save();
+}
+
+function renderSkinSelect(){
+  const sel = $("skinSelect");
+  if(!sel) return;
+
+  const cur = state.skins.current || "neon";
+  const unlocked = state.skins.unlocked;
+
+  const opts = ["neon","maple","retro"].map(k=>{
+    const isUnlocked = !!unlocked[k];
+    const label = SKIN_REQ[k]?.label || k;
+    const text = isUnlocked ? label : `??? (${SKIN_REQ[k]?.reqText || "해금 조건"})`;
+    return `<option value="${k}" ${isUnlocked?"":"disabled"} class="${isUnlocked?"":"lockOpt"}">${text}</option>`;
+  }).join("");
+
+  sel.innerHTML = opts;
+
+  if(!unlocked[cur]){
+    state.skins.current = "neon";
+    applySkinClass("neon");
+  }
+  sel.value = state.skins.current;
+}
+
+function tryUnlockSkins(){
+  const mapleOk = (state.lv >= 10);
+  if(mapleOk && !state.skins.unlocked.maple){
+    state.skins.unlocked.maple = true;
+    if(!state.skins.seenUnlock.maple){
+      state.skins.seenUnlock.maple = true;
+      showMsg("🎉 스킨 해금: 메이플풍!");
+      flashOverlay("NEW SKIN!");
+    }
+  }
+
+  const retroOk = (state.streak||0) >= 15;
+  if(retroOk && !state.skins.unlocked.retro){
+    state.skins.unlocked.retro = true;
+    if(!state.skins.seenUnlock.retro){
+      state.skins.seenUnlock.retro = true;
+      showMsg("🎉 스킨 해금: 레트로 게임보이!");
+      flashOverlay("NEW SKIN!");
+    }
+  }
+}
+
+function initSkin(){
+  if(!state.skins.unlocked[state.skins.current]) state.skins.current="neon";
+  applySkinClass(state.skins.current);
+  renderSkinSelect();
+}
+
+/* =========================
+   레벨/XP 정합성 (감소 포함)
+========================= */
+function totalXPFromState(){
+  const L = Math.max(1, state.lv|0);
+  const xp = Math.max(0, Math.floor(state.xp||0));
+  const sumPrev = 100*(L-1) + 25*(L-1)*(L-2);
+  return Math.max(0, sumPrev + xp);
+}
+function setStateFromTotalXP(total){
+  total = Math.max(0, Math.floor(total));
+  let lv = 1;
+  let need = 100;
+  while(total >= need){
+    total -= need;
+    lv += 1;
+    need += 50;
+  }
+  state.lv = lv;
+  state.maxXp = need;
+  state.xp = total;
+  reconcileStatPoints();
+}
+
+/* =========================
+   B방식 스탯 롤백 (최근부터)
+========================= */
+function totalSP(){ return Math.max(0, state.lv - 1); }
+function freeSP(){ return Math.max(0, totalSP() - (state.spentSP||0)); }
+
+function rollbackOneStat(type){
+  if(type==="hp"){
+    state.maxHp = Math.max(0, state.maxHp - 10);
+    state.hp = Math.min(state.hp, state.maxHp);
+  }
+  if(type==="atk"){
+    state.atk = Math.max(0, state.atk - 1);
+  }
+  if(type==="crit"){
+    state.crit = Math.max(0, state.crit - 0.5);
+  }
+}
+function reconcileStatPoints(){
+  let rolled = 0;
+  while((state.spentSP||0) > totalSP()){
+    const last = state.statLog.pop();
+    if(!last){
+      state.spentSP = totalSP();
+      break;
+    }
+    rollbackOneStat(last);
+    state.spentSP -= 1;
+    rolled += 1;
+  }
+  if(rolled>0){
+    showMsg(`⬇️ 레벨 하락으로 스탯 ${rolled}개가 롤백되었습니다`);
+  }
+}
+function addStat(type){
+  if(freeSP() <= 0){ showMsg("❗ 스탯 포인트가 없습니다"); return; }
+
+  if(type==="hp"){ state.maxHp += 10; state.hp += 10; }
+  if(type==="atk"){ state.atk += 1; }
+  if(type==="crit"){ state.crit += 0.5; }
+
+  state.spentSP += 1;
+  state.statLog.push(type);
+
+  showMsg("📈 스탯이 상승했습니다");
+  save(); render();
+}
+
+/* =========================
+   기록 유틸
+========================= */
+function ensureDay(d){
+  records[d]=records[d]||{};
+  if(records[d].xpGained===undefined) records[d].xpGained=0;
+  if(records[d].xpParts===undefined) records[d].xpParts={};
+  if(records[d].matParts===undefined) records[d].matParts={};
+  if(records[d].bossWins===undefined) records[d].bossWins=0;
+}
+
+function addXpPart(d, key, amount){
+  if(!amount) return;
+  ensureDay(d);
+
+  records[d].xpGained += amount;
+  records[d].xpParts[key] = (records[d].xpParts[key]||0) + amount;
+
+  const total = totalXPFromState();
+  setStateFromTotalXP(total + amount);
+}
+function removeXpPart(d, key){
+  ensureDay(d);
+  const a = records[d].xpParts[key]||0;
+  if(!a) return;
+
+  const total = totalXPFromState();
+  setStateFromTotalXP(total - a);
+
+  records[d].xpGained = Math.max(0, (records[d].xpGained||0) - a);
+  records[d].xpParts[key]=0;
+}
+
+function addMatPart(d, key, amount){
+  if(!amount) return;
+  ensureDay(d);
+  records[d].matParts[key] = (records[d].matParts[key]||0) + amount;
+  state.mat += amount;
+}
+function removeMatPart(d, key){
+  ensureDay(d);
+  const a = records[d].matParts[key]||0;
+  if(!a) return;
+  state.mat = Math.max(0, state.mat - a);
+  records[d].matParts[key]=0;
+}
+
+/* =========================
+   연속 출석 + 보너스
+========================= */
+function updateStreakOnAction(d){
+  if(state.lastStreakDate === d) return;
+
+  const y = addDaysISO(d, -1);
+  if(state.lastStreakDate === y){
+    state.streak = (state.streak||0) + 1;
+  }else{
+    state.streak = 1;
+  }
+  state.lastStreakDate = d;
+
+  if(state.streak > 0 && state.streak % 3 === 0 && state.lastStreakRewardDate !== d){
+    const REWARD = 20;
+    addXpPart(d, "streak", REWARD);
+    state.lastStreakRewardDate = d;
+    showMsg(`🔥 연속 ${state.streak}일! XP +${REWARD}`);
+    flashOverlay("STREAK!");
+  }
+}
+
+function checkDailyBonus(d){
+  const r = records[d];
+  if(!r) return;
+  if(r.dailyBonusGiven) return;
+
+  const hasRun = r.run !== undefined;
+  const hasWorkout = r.workout === true;
+  const mealSuccess = r.meal === true;
+
+  if(hasRun && hasWorkout && mealSuccess){
+    const BONUS_XP = 30;
+    addXpPart(d, "dailyBonus", BONUS_XP);
+    r.dailyBonusGiven = true;
+    showMsg(`🎁 오늘 올클리어! XP +${BONUS_XP}`);
+    flashOverlay("BONUS!");
+  }
+}
+
+/* =========================
+   퀘스트 (일일/주간) + 보상 수령
+========================= */
+const DAILY_QUESTS = [
+  { id:"run2k", title:"러닝 스타트", desc:"오늘 달리기 2km 이상", type:"daily",
+    progress:()=>({cur: (getToday().run||0), max:2, text:`${(getToday().run||0)} / 2 km`} ),
+    reward:{xp:30, mat:1}
+  },
+  { id:"workout1", title:"근력 루틴", desc:"오늘 근력운동 1회", type:"daily",
+    progress:()=>({cur: (getToday().workout?1:0), max:1, text:`${getToday().workout?1:0} / 1`} ),
+    reward:{xp:30, mat:0}
+  },
+  { id:"mealSuccess", title:"클린 푸드", desc:"오늘 식단 성공 1회", type:"daily",
+    progress:()=>({cur: (getToday().meal===true?1:0), max:1, text:`${getToday().meal===true?1:0} / 1`} ),
+    reward:{xp:20, mat:1}
+  }
+];
+
+const WEEKLY_QUESTS = [
+  { id:"run10k", title:"주간 10K", desc:"이번 주 달리기 합 10km", type:"weekly",
+    progress:()=>{ const sum=weeklySumRun(); return {cur:sum, max:10, text:`${sum.toFixed(1)} / 10 km`}; },
+    reward:{xp:0, mat:3}
+  },
+  { id:"boss3", title:"사냥꾼", desc:"이번 주 보스 3회 처치", type:"weekly",
+    progress:()=>{ const w=weeklyBossWins(); return {cur:w, max:3, text:`${w} / 3`}; },
+    reward:{xp:100, mat:0}
+  },
+  { id:"streak5", title:"습관 유지", desc:"연속 출석 5일 달성", type:"weekly",
+    progress:()=>{ const s=(state.streak||0); return {cur:Math.min(s,5), max:5, text:`${Math.min(s,5)} / 5`}; },
+    reward:{xp:80, mat:0}
+  }
+];
+
+function getToday(){
+  const d=today(); ensureDay(d);
+  return records[d] || {};
+}
+
+function mondayOfWeek(iso){
+  const dt=new Date(iso+"T00:00:00");
+  const day=dt.getDay();
+  const diff = (day===0 ? -6 : 1-day);
+  dt.setDate(dt.getDate()+diff);
+  return dt.toISOString().slice(0,10);
+}
+function isoWeekKey(iso){ return mondayOfWeek(iso); }
+
+function weeklyDates(){
+  const m = mondayOfWeek(today());
+  const arr=[];
+  for(let i=0;i<7;i++) arr.push(addDaysISO(m, i));
+  return {monday:m, days:arr};
+}
+function weeklyBossWins(){
+  const {days} = weeklyDates();
+  let sum=0;
+  for(const d of days){
+    if(records[d] && records[d].bossWins) sum += Number(records[d].bossWins)||0;
+  }
+  return sum;
+}
+
+function weeklySumRun(){
+  const {days} = weeklyDates();
+  let sum=0;
+  for(const d of days){
+    if(records[d] && records[d].run!==undefined) sum += Number(records[d].run)||0;
+  }
+  return sum;
+}
+
+function questKey(type){
+  if(type==="daily") return today();
+  return isoWeekKey(today());
+}
+function questClaimId(type,id){
+  return (type==="daily" ? "D:" : "W:") + questKey(type) + ":" + id;
+}
+function ensureQuestReset(){
+  const dKey = today();
+  const wKey = isoWeekKey(today());
+  if(state.quests.dailyKey !== dKey) state.quests.dailyKey = dKey;
+  if(state.quests.weeklyKey !== wKey) state.quests.weeklyKey = wKey;
+}
+
+function isQuestClaimed(type,id){
+  const cid = questClaimId(type,id);
+  return !!state.quests.claimed[cid];
+}
+function setQuestClaimed(type,id){
+  const cid = questClaimId(type,id);
+  state.quests.claimed[cid]=true;
+}
+
+function claimQuest(type,id){
+  ensureQuestReset();
+  const list = (type==="daily") ? DAILY_QUESTS : WEEKLY_QUESTS;
+  const q = list.find(x=>x.id===id);
+  if(!q) return;
+
+  const pr = q.progress();
+  const done = (pr.cur >= pr.max);
+  if(!done){ showMsg("아직 조건을 달성하지 못했습니다"); return; }
+  if(isQuestClaimed(type,id)){ showMsg("이미 보상을 받았습니다"); return; }
+
+  const d=today(); ensureDay(d);
+  const xp = q.reward.xp||0;
+  const mat = q.reward.mat||0;
+
+  if(xp>0) addXpPart(d, `quest_${type}_${id}`, xp);
+  if(mat>0) addMatPart(d, `quest_${type}_${id}`, mat);
+
+  setQuestClaimed(type,id);
+  showMsg(`✅ 보상 수령! ${xp?`XP +${xp} `:""}${mat?`재료 +${mat}`:""}`.trim());
+  flashOverlay("QUEST!");
+  save(); render();
+}
+
+function renderQuestCard(q){
+  const pr = q.progress();
+  const done = pr.cur >= pr.max;
+  const claimed = isQuestClaimed(q.type,q.id);
+  const canClaim = done && !claimed;
+
+  const rewardStr = `${q.reward.xp?`XP +${q.reward.xp}`:""}${(q.reward.xp&&q.reward.mat)?", ":""}${q.reward.mat?`재료 +${q.reward.mat}`:""}`.trim();
+
+  return `
+    <div class="qItem">
+      <div class="qTop">
+        <div>
+          <div class="qTitle">${q.title}</div>
+          <div class="qDesc">${q.desc}</div>
+        </div>
+        <button class="smallBtn ${canClaim?"":"gray"}" ${canClaim?"":"disabled"} onclick="claimQuest('${q.type}','${q.id}')">
+          ${claimed ? "수령완료" : (done ? "보상받기" : "진행중")}
+        </button>
+      </div>
+      <div class="qMeta">
+        <span class="tag info">진행: ${pr.text}</span>
+        <span class="tag ${done?"ok":"no"}">${done?"완료":"미완료"}</span>
+        <span class="tag">보상: ${rewardStr || "-"}</span>
+      </div>
+    </div>
+  `;
+}
+
+function renderQuests(){
+  ensureQuestReset();
+  $("dailyQuestKey").innerText = `(${today()})`;
+  const {monday} = weeklyDates();
+  $("weeklyQuestKey").innerText = `(${monday} 시작)`;
+  $("dailyQuests").innerHTML = DAILY_QUESTS.map(q=>renderQuestCard(q)).join("");
+  $("weeklyQuests").innerHTML = WEEKLY_QUESTS.map(q=>renderQuestCard(q)).join("");
+}
+
+/* =========================
+   운동/식단
+========================= */
+function addRun(){
+  const d=today(); ensureDay(d);
+  if(records[d].run!==undefined) return;
+
+  const km=parseFloat($("kmInput").value);
+  if(!km||km<=0) return;
+
+  records[d].run=km;
+
+  addXpPart(d, "run", Math.floor(km*20));
+
+  const before=Math.floor(state.runSum/10);
+  state.runSum += km;
+  const after=Math.floor(state.runSum/10);
+  const gained = Math.max(0, after-before);
+  if(gained>0){
+    addMatPart(d, "run", gained);
+    showMsg(`🏃 ${km}km 달리기 완료 (재료 +${gained})`);
+  }else{
+    showMsg(`🏃 ${km}km 달리기 완료`);
+  }
+
+  updateStreakOnAction(d);
+  checkDailyBonus(d);
+  save(); render();
+}
+
+function confirmWorkout(){
+  if(!confirm("💪 진짜로 오늘 근력운동을 했나요?\n확인을 누르면 오늘 기록이 저장됩니다.")) return;
+  addWorkout();
+}
+function addWorkout(){
+  const d=today(); ensureDay(d);
+  if(records[d].workout) return;
+
+  records[d].workout=true;
+  addXpPart(d, "workout", 50);
+  showMsg("💪 근력운동 완료 (+50 XP)");
+
+  updateStreakOnAction(d);
+  checkDailyBonus(d);
+  save(); render();
+}
+
+function confirmMeal(ok){
+  const text = ok ? "🍱 오늘 식단을 '성공'으로 기록할까요?" : "🍱 오늘 식단을 '실패'로 기록할까요?";
+  if(!confirm(text + "\n확인을 누르면 오늘 기록이 저장됩니다.")) return;
+  addMeal(ok);
+}
+function addMeal(ok){
+  const d=today(); ensureDay(d);
+  if(records[d].meal!==undefined) return;
+
+  records[d].meal=ok;
+
+  if(ok){
+    addXpPart(d, "meal", 10);
+    if(Math.random()<0.3){
+      addMatPart(d, "meal", 1);
+      showMsg("🍱 식단 성공 (재료 +1)");
+    }else{
+      showMsg("🍱 식단 성공");
+    }
+  }else{
+    showMsg("🍱 식단 실패");
+  }
+
+  updateStreakOnAction(d);
+  checkDailyBonus(d);
+  save(); render();
+}
+
+/* =========================
+   보스 패턴
+========================= */
+const PATTERNS = {
+  NORMAL: {name:"평타", hint:"보스가 매초 공격합니다."},
+  HEAVY: {name:"강공 예고", hint:"강공! 회피 버튼으로 막을 수 있습니다."},
+  DEFEND: {name:"방어 태세", hint:"보스가 5초간 받는 피해 50%."},
+  LIFESTEAL: {name:"흡혈", hint:"보스가 때리며 체력을 회복합니다."}
+};
+
+function startBoss(){
+  if(battle) return;
+
+  state.bossHp = bossHpForLevel(state.bossLv);
+  state.bossAtk = bossAtkForLevel(state.bossLv);
+
+  battle={
+    time:30,
+    bossHp:state.bossHp,
+    myHp:state.maxHp,
+    pattern:"NORMAL",
+    patternT:0,
+    dmgMult:1.0,
+    heavyWindup:0,
+    heavyDodged:false,
+    heavyArmed:false,
+  };
+
+  setPattern("NORMAL");
+
+  $("bossBtn").innerText="공격하기";
+  $("bossBtn").onclick=attackBoss;
+
+  showMsg(`⚔️ 보스 Lv${state.bossLv} 전투 시작`);
+
+  bossTimer=setInterval(()=>{
+    if(!battle) return;
+
+    battle.time--;
+    tickBossAI();
+    tickBossAttack();
+
+    $("timer").innerText=`남은 시간 ${battle.time}s`;
+    if(battle.time<=0 || battle.myHp<=0) endBoss(false);
+
+    if(battle.time<=10){
+      $("timer").style.color="#ff4444";
+      $("timer").style.fontWeight="900";
+    }else{
+      $("timer").style.color="#bbb";
+      $("timer").style.fontWeight="400";
+    }
+    render();
+  },1000);
+}
+
+function setPattern(p){
+  if(!battle) return;
+  battle.pattern = p;
+  battle.patternT = 0;
+  battle.dmgMult = 1.0;
+  battle.heavyWindup = 0;
+  battle.heavyDodged = false;
+  battle.heavyArmed = false;
+
+  if(p==="DEFEND"){
+    battle.dmgMult = 0.5;
+  }
+  if(p==="HEAVY"){
+    battle.heavyWindup = 3;
+    battle.heavyArmed = true;
+    $("dodgeBtn").disabled = false;
+  }else{
+    $("dodgeBtn").disabled = true;
+  }
+}
+
+function useDodge(){
+  if(!battle) return;
+  if(battle.pattern!=="HEAVY" || !battle.heavyArmed) return;
+  battle.heavyDodged = true;
+  battle.heavyArmed = false;
+  $("dodgeBtn").disabled = true;
+  showMsg("🛡️ 회피 준비 완료!");
+  flashOverlay("DODGE!");
+}
+
+function tickBossAI(){
+  if(!battle) return;
+  battle.patternT += 1;
+
+  if(battle.pattern==="HEAVY"){
+    return;
+  }
+  if(battle.patternT >= 5){
+    const roll = Math.random();
+    let next="NORMAL";
+    if(roll < 0.15) next="HEAVY";
+    else if(roll < 0.45) next="DEFEND";
+    else if(roll < 0.70) next="LIFESTEAL";
+    else next="NORMAL";
+    setPattern(next);
+  }
+}
+
+function tickBossAttack(){
+  if(!battle) return;
+
+  const atk = state.bossAtk;
+
+  if(battle.pattern==="HEAVY"){
+    battle.heavyWindup -= 1;
+
+    if(battle.heavyWindup > 0){
+      return;
+    }
+    const heavyDmg = Math.floor(atk * 2.5);
+
+    if(battle.heavyDodged){
+      showMsg("✅ 강공 회피 성공!");
+      flashOverlay("EVADE!");
+    }else{
+      battle.myHp -= heavyDmg;
+      showMsg(`💥 강공! -${heavyDmg} HP`);
+      $("bossCard").classList.add("shake");
+      setTimeout(()=>$("bossCard").classList.remove("shake"),180);
+    }
+    $("dodgeBtn").disabled = true;
+
+    setPattern("NORMAL");
+    return;
+  }
+
+  if(battle.pattern==="LIFESTEAL"){
+    const dmg = Math.floor(atk * 0.8);
+    const heal = Math.floor(atk * 0.4);
+
+    battle.myHp -= dmg;
+    battle.bossHp = Math.min(state.bossHp, battle.bossHp + heal);
+    return;
+  }
+
+  battle.myHp -= atk;
+}
+
+function attackBoss(){
+  if(!battle) return;
+
+  let dmg=state.atk;
+  let crit=false;
+  if(Math.random()*100 < state.crit){ dmg*=2; crit=true; }
+
+  const realDmg = Math.max(1, Math.floor(dmg * (battle.dmgMult||1)));
+  battle.bossHp -= realDmg;
+
+  $("bossCard").classList.add("shake");
+  setTimeout(()=>$("bossCard").classList.remove("shake"),180);
+
+  damagePopup(crit ? `CRIT ${realDmg}` : `${realDmg}`, crit);
+
+  if(battle.bossHp<=0) endBoss(true);
+  render();
+}
+
+function endBoss(win){
+  clearInterval(bossTimer);
+  bossTimer=null;
+  battle=null;
+
+  $("bossBtn").innerText="보스전 시작";
+  $("bossBtn").onclick=startBoss;
+  $("timer").innerText="";
+  $("timer").style.color="#bbb";
+  $("timer").style.fontWeight="400";
+  $("dodgeBtn").disabled = true;
+
+  const d=today(); ensureDay(d);
+
+  if(win){
+    addXpPart(d, "boss", 50);
+    addMatPart(d, "boss", 1);
+    records[d].bossWins = (records[d].bossWins||0) + 1;
+
+    state.bossLv += 1;
+    state.bossHp = bossHpForLevel(state.bossLv);
+    state.bossAtk = bossAtkForLevel(state.bossLv);
+
+    flashOverlay("VICTORY!");
+  }else{
+    state.bossHp = bossHpForLevel(state.bossLv);
+    state.bossAtk = bossAtkForLevel(state.bossLv);
+    flashOverlay("DEFEAT");
+  }
+
+  save(); render();
+}
+
+/* =========================
+   장비
+========================= */
+function upgradeGear(i){
+  const g = state.gears[i];
+  const locked = state.lv < g.req;
+  if(locked) return;
+
+  const cost = g.lv + 1;
+  if(state.mat < cost) { showMsg("재료 부족"); return; }
+
+  state.mat -= cost;
+  g.lv += 1;
+
+  if(i===0){ state.atk += 1; }
+  if(i===1){ state.maxHp += 10; state.hp += 10; }
+  if(i===2){ state.crit += 0.5; }
+  if(i===3){ state.atk += 1; state.crit += 0.5; }
+
+  showMsg(`🛡️ ${g.name} 강화 성공! (Lv ${g.lv})`);
+  flashOverlay("UPGRADE!");
+  save(); render();
+}
+function gearEffectText(i){
+  if(i===0) return "효과: 공격력 +1/강화";
+  if(i===1) return "효과: 최대HP +10/강화";
+  if(i===2) return "효과: 치명타 +0.5%/강화";
+  return "효과: 공격력 +1 & 치명타 +0.5%/강화";
+}
+
+/* =========================
+   취소 / 수정
+========================= */
+function undoToday(kind){
+  const d=today(); ensureDay(d);
+  const r=records[d];
+
+  if(kind==="run"){
+    if(r.run===undefined){ showMsg("오늘 달리기 기록 없음"); return; }
+    if(!confirm("오늘 달리기 기록을 취소할까요?")) return;
+    if(!confirm("정말 취소합니다.")) return;
+
+    removeXpPart(d,"run");
+    removeMatPart(d,"run");
+
+    if(typeof r.run==="number" && !Number.isNaN(r.run)){
+      state.runSum = Math.max(0, state.runSum - r.run);
+    }
+    delete r.run;
+
+    showMsg("오늘 달리기 취소 완료");
+    save(); render();
+    return;
+  }
+
+  if(kind==="workout"){
+    if(!r.workout){ showMsg("오늘 근력운동 기록 없음"); return; }
+    if(!confirm("오늘 근력운동 기록을 취소할까요?")) return;
+    if(!confirm("정말 취소합니다.")) return;
+
+    removeXpPart(d,"workout");
+    r.workout=false;
+
+    showMsg("오늘 근력운동 취소 완료");
+    save(); render();
+    return;
+  }
+
+  if(kind==="meal"){
+    if(r.meal===undefined){ showMsg("오늘 식단 기록 없음"); return; }
+    if(!confirm("오늘 식단 기록을 취소할까요?")) return;
+    if(!confirm("정말 취소합니다.")) return;
+
+    removeXpPart(d,"meal");
+    removeMatPart(d,"meal");
+    delete r.meal;
+
+    showMsg("오늘 식단 취소 완료");
+    save(); render();
+    return;
+  }
+}
+
+/* 수정 모달 */
+let editCtx=null;
+function openEdit(title, bodyHtml){
+  $("editTitle").innerText = title;
+  $("editBody").innerHTML = bodyHtml;
+  $("editModalBack").classList.add("show");
+}
+function closeEdit(e){
+  if(e && e.target && e.target.id!=="editModalBack") return;
+  $("editModalBack").classList.remove("show");
+  editCtx=null;
+}
+function editTodayRun(){
+  const d=today(); ensureDay(d);
+  const r=records[d]||{};
+  if(r.run===undefined){ showMsg("오늘 달리기 기록이 없습니다"); return; }
+
+  editCtx={type:"run"};
+  openEdit("✏️ 오늘 달리기 수정",
+    `<div class="small">현재: <b>${r.run}km</b></div>
+     <input id="editRunInput" type="number" step="0.1" value="${r.run}" placeholder="수정할 km">
+     <div class="small">※ XP/재료(누적 10km)는 자동 재계산됩니다.</div>`
+  );
+}
+function editTodayMeal(){
+  const d=today(); ensureDay(d);
+  const r=records[d]||{};
+  if(r.meal===undefined){ showMsg("오늘 식단 기록이 없습니다"); return; }
+
+  editCtx={type:"meal"};
+  const cur = r.meal===true ? "성공" : "실패";
+  openEdit("✏️ 오늘 식단 수정",
+    `<div class="small">현재: <b>${cur}</b></div>
+     <div class="grid2" style="margin-top:8px">
+       <button id="editMealOk" onclick="selectMealEdit(true)">성공</button>
+       <button class="gray" id="editMealNo" onclick="selectMealEdit(false)">실패</button>
+     </div>
+     <div class="small">※ XP(성공 +10 / 실패 0)는 규칙대로 변경됩니다.<br>
+     재료(확률 드랍)는 “수정 시 재추첨 없음” → 기존 값 유지</div>`
+  );
+  setTimeout(()=>{
+    const isOk = (records[d].meal===true);
+    highlightMealEdit(isOk);
+    editCtx.mealTarget = isOk;
+  },0);
+}
+function highlightMealEdit(ok){
+  const okBtn=$("editMealOk"), noBtn=$("editMealNo");
+  if(!okBtn||!noBtn) return;
+  okBtn.className = ok ? "" : "gray";
+  noBtn.className = ok ? "gray" : "";
+}
+function selectMealEdit(ok){
+  if(!editCtx||editCtx.type!=="meal") return;
+  editCtx.mealTarget = ok;
+  highlightMealEdit(ok);
+}
+function applyEdit(){
+  if(!editCtx) return;
+  const d=today(); ensureDay(d);
+  const r=records[d]||{};
+
+  if(editCtx.type==="run"){
+    const inp=$("editRunInput");
+    if(!inp) return;
+    const newKm=parseFloat(inp.value);
+    if(!newKm || newKm<=0){ showMsg("km 값이 올바르지 않음"); return; }
+
+    const oldKm = Number(r.run||0);
+
+    removeXpPart(d,"run");
+    removeMatPart(d,"run");
+    if(oldKm>0) state.runSum = Math.max(0, state.runSum - oldKm);
+
+    r.run = newKm;
+
+    addXpPart(d,"run", Math.floor(newKm*20));
+
+    const before=Math.floor(state.runSum/10);
+    state.runSum += newKm;
+    const after=Math.floor(state.runSum/10);
+    const gained=Math.max(0, after-before);
+    if(gained>0) addMatPart(d,"run",gained);
+
+    showMsg(`✏️ 달리기 수정 완료 (${newKm}km)`);
+    closeEdit();
+    checkDailyBonus(d);
+    save(); render();
+    return;
+  }
+
+  if(editCtx.type==="meal"){
+    if(r.meal===undefined){ showMsg("오늘 식단 기록이 없습니다"); return; }
+    const target = !!editCtx.mealTarget;
+
+    removeXpPart(d,"meal");
+    r.meal = target;
+
+    if(target){
+      addXpPart(d,"meal",10);
+      showMsg("✏️ 식단 수정: 성공");
+    }else{
+      showMsg("✏️ 식단 수정: 실패");
+    }
+
+    closeEdit();
+    checkDailyBonus(d);
+    save(); render();
+    return;
+  }
+}
+
+/* =========================
+   백업/복원
+========================= */
+function openBackup(){
+  $("backupModalBack").classList.add("show");
+  const payload = {state, records};
+  $("backupText").value = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+}
+function closeBackup(e){
+  if(e && e.target && e.target.id!=="backupModalBack") return;
+  $("backupModalBack").classList.remove("show");
+}
+function copyBackup(){
+  const t=$("backupText");
+  t.select(); t.setSelectionRange(0, t.value.length);
+  try{ document.execCommand("copy"); showMsg("백업 텍스트 복사됨"); }catch(_){ showMsg("복사 실패(수동 복사)"); }
+}
+function restoreBackup(){
+  const raw = $("backupText").value.trim();
+  if(!raw) return;
+  if(!confirm("복원하면 현재 데이터가 덮어써집니다. 계속할까요?")) return;
+  try{
+    const json = decodeURIComponent(escape(atob(raw)));
+    const obj = JSON.parse(json);
+    if(!obj || !obj.state || !obj.records) throw new Error("형식 오류");
+
+    state = obj.state;
+    records = obj.records;
+
+    state.lv ??= 1;
+    state.xp ??= 0;
+    state.maxXp ??= (100 + 50*(state.lv-1));
+    state.maxHp ??= 50;
+    state.hp ??= Math.min(state.hp ?? state.maxHp, state.maxHp);
+    state.atk ??= 5;
+    state.crit ??= 5;
+    state.mat ??= 0;
+    state.runSum ??= 0;
+
+    state.bossLv ??= 1;
+    state.bossHp = bossHpForLevel(state.bossLv);
+    state.bossAtk = bossAtkForLevel(state.bossLv);
+
+    state.gears ??= [
+      {name:"운동화",lv:0,req:5},
+      {name:"운동복",lv:0,req:10},
+      {name:"손목밴드",lv:0,req:15},
+      {name:"헤드셋",lv:0,req:20}
+    ];
+    state.streak ??= 0;
+    state.lastStreakDate ??= "";
+    state.lastStreakRewardDate ??= "";
+    state.spentSP ??= 0;
+    state.statLog ??= [];
+    state.quests ??= {dailyKey:"", weeklyKey:"", claimed:{}};
+    state.quests.claimed ??= {};
+
+    /* ✅ 복원 후에도 스킨 정책 적용 */
+    state.skins ??= { current:"neon", unlocked:{neon:true,maple:false,retro:false}, seenUnlock:{neon:true,maple:false,retro:false} };
+    state.skins.current ??= "neon";
+    state.skins.unlocked ??= {neon:true,maple:false,retro:false};
+    state.skins.seenUnlock ??= {neon:true,maple:false,retro:false};
+    state.skins.unlocked.neon = true;
+    state.skins.seenUnlock.neon = true;
+
+    setStateFromTotalXP(totalXPFromState());
+
+    save();
+    showMsg("복원 완료");
+    closeBackup();
+    initSkin();
+    render();
+  }catch(e){
+    showMsg("복원 실패: 텍스트가 올바르지 않음");
+  }
+}
+
+/* =========================
+   캘린더 상세
+========================= */
+function openDetail(dateStr){
+  ensureDay(dateStr);
+  const r=records[dateStr]||{};
+  const run = (r.run!==undefined) ? `${r.run}km` : "없음";
+  const workout = r.workout ? "완료" : "미완료";
+  const meal = (r.meal===true) ? "성공" : (r.meal===false) ? "실패" : "미입력";
+  const xp = r.xpGained||0;
+  const parts = r.xpParts||{};
+  const mats = r.matParts||{};
+  const lines = [
+    `<b>${dateStr}</b>`,
+    `달리기: ${run}`,
+    `근력: ${workout}`,
+    `식단: ${meal}`,
+    `보스 처치: ${r.bossWins||0}회`,
+    `획득 XP: ${xp}`,
+    `XP 상세: (달리기 ${parts.run||0}, 근력 ${parts.workout||0}, 식단 ${parts.meal||0}, 스트릭 ${parts.streak||0}, 올클리어 ${parts.dailyBonus||0}, 보스 ${parts.boss||0}, 퀘스트 ${Object.keys(parts).filter(k=>k.startsWith("quest_")).reduce((s,k)=>s+(parts[k]||0),0)})`,
+    `재료: (달리기 ${mats.run||0}, 식단 ${mats.meal||0}, 보스 ${mats.boss||0}, 퀘스트 ${Object.keys(mats).filter(k=>k.startsWith("quest_")).reduce((s,k)=>s+(mats[k]||0),0)})`,
+    r.dailyBonusGiven ? "올클리어 보너스: 지급됨" : "올클리어 보너스: 미지급"
+  ];
+  $("detailBody").innerHTML = lines.join("<br>");
+  $("detailModalBack").classList.add("show");
+}
+function closeDetail(e){
+  if(e && e.target && e.target.id!=="detailModalBack") return;
+  $("detailModalBack").classList.remove("show");
+}
+function jumpToToday(){
+  closeDetail();
+  location.hash="#work";
+}
+
+/* =========================
+   초기화
+========================= */
+function resetAll(){
+  const v = prompt("초기화하려면 RESET 을 입력하세요.");
+  if(v !== "RESET") { showMsg("초기화 취소"); return; }
+  if(!confirm("정말 모든 데이터를 삭제합니다. 되돌릴 수 없습니다.")) return;
+  localStorage.clear();
+  location.reload();
+}
+
+/* =========================
+   그래프
+========================= */
+let chartDays=7;
+function setChartDays(n){
+  chartDays=n;
+  renderCharts();
+  showMsg(`그래프 기간: 최근 ${n}일`);
+}
+let runChart=null, xpChart=null;
+function buildSeries(daysCount){
+  const end=today();
+  const days=[];
+  for(let i=daysCount-1;i>=0;i--) days.push(addDaysISO(end,-i));
+  const labels=days.map(fmtMMDD);
+  const runData=days.map(d=> (records[d] && records[d].run!==undefined) ? Number(records[d].run) : 0);
+  const xpData=days.map(d=> (records[d] && records[d].xpGained!==undefined) ? Number(records[d].xpGained) : 0);
+  return {labels, runData, xpData, start:days[0], end:days[days.length-1]};
+}
+function renderCharts(){
+  if(!window.Chart) return;
+
+  const {labels, runData, xpData, start, end}=buildSeries(chartDays);
+  $("chartRange1").innerText = `${fmtMMDD(start)} ~ ${fmtMMDD(end)}`;
+  $("chartRange2").innerText = `${fmtMMDD(start)} ~ ${fmtMMDD(end)}`;
+
+  const runCtx=$("runChart").getContext("2d");
+  const xpCtx=$("xpChart").getContext("2d");
+
+  if(runChart) runChart.destroy();
+  if(xpChart) xpChart.destroy();
+
+  runChart=new Chart(runCtx,{
+    type:"line",
+    data:{labels, datasets:[{label:"km", data:runData, tension:0.35, fill:false}]},
+    options:{responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}}}
+  });
+
+  xpChart=new Chart(xpCtx,{
+    type:"line",
+    data:{labels, datasets:[{label:"XP", data:xpData, tension:0.35, fill:false}]},
+    options:{responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}}}
+  });
+}
+
+/* =========================
+   도움말(설명창)
+========================= */
+const HELP = {
+  all: {
+    title: "📖 전체 시스템 설명",
+    html: `
+    <div class="small">
+      <b>이 게임은 “운동 습관 + RPG 성장”을 결합한 시스템입니다.</b><br><br>
+
+      ✔ 실제 행동(달리기 / 근력 / 식단)을 기록하면<br>
+      → 경험치(XP), 재료, 레벨, 스탯이 성장합니다.<br><br>
+
+      <b>기본 흐름</b>
+      <ul class="ul">
+        <li>운동/식단 기록 → XP 획득</li>
+        <li>XP로 레벨업 → 스탯 포인트 획득</li>
+        <li>스탯 강화 → 보스 공략 쉬워짐</li>
+        <li>보스 처치 → 재료 + 추가 XP</li>
+        <li>재료 → 장비 강화</li>
+      </ul>
+
+      <b>스킨(테마)</b>
+      <ul class="ul">
+        <li>표시 순서: <b>네온 → 메이플풍 → 레트로 게임보이</b></li>
+        <li>네온: <b>기본</b></li>
+        <li>메이플풍: <b>레벨 10</b> 해금</li>
+        <li>레트로: <b>연속 출석 15일</b> 해금</li>
+      </ul>
+    </div>`
+  },
+  status:{ title:"📌 상태창 설명", html:`<div class="small">상태창: 레벨/XP/HP/스탯/재료/연속출석을 표시합니다.</div>` },
+  stats:{ title:"📈 스탯 분배", html:`<div class="small">레벨업마다 1포인트 획득. HP(+10), 공격력(+1), 치명타(+0.5%)를 올릴 수 있습니다. 운동 취소로 레벨이 내려가면, 올렸던 스탯도 최근부터 자동 롤백됩니다(B안).</div>` },
+  work:{ title:"🏃 운동", html:`<div class="small">달리기: km 입력 후 1일 1회. XP=km×20. 누적 달리기 10km마다 강화재료 1개. 근력운동: 1일 1회(+50 XP).</div>` },
+  meal:{ title:"🍱 식단", html:`<div class="small">식단: 1일 1회(성공/실패). 성공 시 XP+10, 30% 확률로 재료+1. 버튼은 실수 방지 확인창이 뜹니다.</div>` },
+  boss:{ title:"👹 보스", html:`<div class="small">보스전: 30초 타임어택. 공격하기 연타로 보스를 쓰러뜨리면 XP+50, 재료+1, 보스레벨+1. 패턴: 평타/강공(회피 가능)/방어(피해 감소)/흡혈.</div>` },
+  gear:{ title:"🛡️ 장비", html:`<div class="small">장비 4종: 운동화/운동복/손목밴드/헤드셋. 해금 조건은 “내 레벨”. 강화 비용은 (현재 장비레벨+1) 재료를 소모. 강화 시 스탯 상승.</div>` },
+  calendar:{ title:"📅 캘린더", html:`<div class="small">날짜별로 달리기(km), 근력, 식단, XP, 보스 처치를 표시합니다. 날짜를 누르면 상세가 뜹니다.</div>` },
+  charts:{ title:"📊 그래프", html:`<div class="small">최근 7일/30일 달리기(km) 그래프와 XP 획득량 그래프를 표시합니다.</div>` },
+  quest:{ title:"🧾 퀘스트", html:`<div class="small">일일/주간 퀘스트를 달성하면 “보상받기” 버튼으로 XP/재료를 받을 수 있습니다.</div>` },
+  reset:{ title:"⚠️ 전체 초기화", html:`<div class="small">RESET을 입력하고 확인하면 모든 데이터가 삭제됩니다(되돌릴 수 없음).</div>` }
+};
+
+function openHelp(key){
+  const k = HELP[key] ? key : "all";
+  $("helpTitle").innerText = HELP[k].title;
+  $("helpBody").innerHTML = HELP[k].html;
+  $("helpModalBack").classList.add("show");
+}
+function closeHelp(e){
+  if(e && e.target && e.target.id!=="helpModalBack") return;
+  $("helpModalBack").classList.remove("show");
+}
+
+/* =========================
+   보스 패턴 UI 텍스트
+========================= */
+function renderBossPattern(){
+  if(!battle){
+    $("patternText").innerText = "-";
+    $("patternHint").innerText = "";
+    return;
+  }
+  const p = battle.pattern;
+  if(p==="HEAVY"){
+    $("patternText").innerText = `강공 예고 (${Math.max(0,battle.heavyWindup)}s)`;
+    $("patternHint").innerText = PATTERNS.HEAVY.hint;
+    return;
+  }
+  $("patternText").innerText = PATTERNS[p]?.name || p;
+  $("patternHint").innerText = PATTERNS[p]?.hint || "";
+}
+
+/* =========================
+   렌더
+========================= */
+let lastRenderedLv = state.lv;
+
+function render(){
+  if(state.lv > lastRenderedLv){
+    $("status").classList.add("levelup");
+    setTimeout(()=>$("status").classList.remove("levelup"),600);
+    flashOverlay("LEVEL UP!");
+  }
+  lastRenderedLv = state.lv;
+
+  tryUnlockSkins();
+  renderSkinSelect();
+
+  $("lv").innerText=state.lv;
+  $("xpText").innerText=`${state.xp}/${state.maxXp}`;
+  $("xpBar").style.width=(state.xp/state.maxXp*100)+"%";
+
+  $("hpText").innerText=`${state.hp}/${state.maxHp}`;
+  $("hpBar").style.width=(state.hp/state.maxHp*100)+"%";
+
+  $("atk").innerText=state.atk;
+  $("crit").innerText=Number(state.crit).toFixed(1);
+  $("sp").innerText=freeSP();
+  $("mat").innerText=state.mat;
+  $("streak").innerText=state.streak||0;
+
+  const nextIn = (3 - ((state.streak||0)%3))%3;
+  $("streakNext").innerText = nextIn===0 ? "(다음 보상: 오늘 가능)" : `(다음 보상까지 ${nextIn}일)`;
+
+  const d=today(); ensureDay(d);
+  const r=records[d]||{};
+  const hasRun = r.run!==undefined;
+  const hasWorkout = r.workout===true;
+  const hasMeal = r.meal!==undefined;
+  const mealSuccess = r.meal===true;
+
+  const pills=[];
+  pills.push(`<div class="pill ${hasRun?"ok":"no"}">달리기 ${hasRun?("✅ "+r.run+"km"):"❌"}</div>`);
+  pills.push(`<div class="pill ${hasWorkout?"ok":"no"}">근력 ${hasWorkout?"✅":"❌"}</div>`);
+  pills.push(`<div class="pill ${hasMeal?(mealSuccess?"ok":"warn"):"no"}">식단 ${hasMeal?(mealSuccess?"✅":"❌"):"❌"}</div>`);
+  $("todayPills").innerHTML=pills.join("");
+
+  const prog = (hasRun?1:0)+(hasWorkout?1:0)+(mealSuccess?1:0);
+  $("dailyProgress").innerText = `${prog}/3`;
+
+  $("runBtn").disabled = hasRun;
+  $("runBtn").textContent = hasRun ? `달리기 완료 (${r.run}km)` : "달리기";
+  $("editRunBtn").disabled = !hasRun;
+  $("undoRunBtn").disabled = !hasRun;
+
+  $("workoutBtn").disabled = hasWorkout;
+  $("workoutBtn").textContent = hasWorkout ? "근력운동 완료" : "근력운동 (+50 XP)";
+  $("undoWorkoutBtn").disabled = !hasWorkout;
+
+  $("mealOkBtn").disabled = hasMeal;
+  $("mealNoBtn").disabled = hasMeal;
+  $("mealOkBtn").textContent = hasMeal ? (mealSuccess?"식단 기록됨(성공)":"식단 기록됨(실패)") : "식단 성공";
+  $("mealNoBtn").textContent = hasMeal ? "식단 기록됨" : "식단 실패";
+  $("editMealBtn").disabled = !hasMeal;
+  $("undoMealBtn").disabled = !hasMeal;
+
+  state.bossHp = bossHpForLevel(state.bossLv);
+  state.bossAtk = bossAtkForLevel(state.bossLv);
+
+  $("bossLv").innerText=state.bossLv;
+  $("bossAtk").innerText=state.bossAtk;
+
+  const bh=battle?battle.bossHp:state.bossHp;
+  $("bossHpText").innerText=Math.max(0,Math.floor(bh));
+  $("bossHpBar").style.width=(Math.max(0,bh)/state.bossHp*100)+"%";
+
+  const mh=battle?battle.myHp:state.maxHp;
+  $("battleHpText").innerText=Math.max(0,Math.floor(mh));
+  $("battleHpBar").style.width=(Math.max(0,mh)/state.maxHp*100)+"%";
+
+  renderBossPattern();
+
+  $("gear").innerHTML = state.gears.map((g,i)=>{
+    const locked = state.lv < g.req;
+    const cost = g.lv + 1;
+    return `
+      <div class="gear-item ${locked?"lock":""}">
+        <div class="row">
+          <span>${locked?"???":g.name}</span>
+          <span>Lv ${g.lv}</span>
+        </div>
+        <div class="gear-sub">${locked?`해금: 내 레벨 ${g.req}`:gearEffectText(i)}</div>
+        ${locked ? "" : `<button onclick="upgradeGear(${i})">강화 (재료 ${cost}개)</button>`}
+      </div>
+    `;
+  }).join("");
+
+  const keys = Object.keys(records).sort().reverse();
+  $("calendar").innerHTML = keys.map(dateStr=>{
+    const rr=records[dateStr]||{};
+    const run = (rr.run!==undefined) ? (rr.run+"km") : "❌";
+    const w = rr.workout ? "💪" : "❌";
+    const m = (rr.meal===true) ? "✅" : (rr.meal===false) ? "❌" : "❌";
+    const xp = rr.xpGained||0;
+    const bw = rr.bossWins||0;
+    return `<div class="clickable" onclick="openDetail('${dateStr}')">${dateStr} | 달리기:${run} | 근력:${w} | 식단:${m} <span class="muted">| XP:${xp} | 보스:${bw}</span></div>`;
+  }).join("");
+
+  renderQuests();
+  save();
+  renderCharts();
+}
+
+/* =========================
+   시작
+========================= */
+initSkin();
+setStateFromTotalXP(totalXPFromState());
+ensureQuestReset();
+render();
+</script>
+
+<!-- ✅ PWA: 서비스워커 등록(추가) -->
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", async () => {
+      try {
+        await navigator.serviceWorker.register("./service-worker.js");
+        console.log("✅ Service Worker registered");
+      } catch (e) {
+        console.log("❌ Service Worker register failed", e);
+      }
+    });
+  }
+</script>
+
+</body>
+  </html>
